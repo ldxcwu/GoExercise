@@ -27,6 +27,7 @@ func main() {
 	// fmt.Printf("%+v\n", story)
 
 	fmt.Printf("Starting the server on port: %d\n", *port)
-	http.ListenAndServe(fmt.Sprintf(":%d", *port), story)
+	// http.ListenAndServe(fmt.Sprintf(":%d", *port), story)
+	http.ListenAndServe(fmt.Sprintf(":%d", *port), cyoa.NewHandler(story, nil))
 
 }
