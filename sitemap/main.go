@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"io"
 	"link"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
@@ -24,9 +26,32 @@ func main() {
 	flag.Parse()
 
 	pages := bfs(*urlFlag, *maxDepth)
-	for _, p := range pages {
-		fmt.Println(p)
+	toXml := urlSet{
+		Xmlns: xmlns,
 	}
+	for _, p := range pages {
+		toXml.Urls = append(toXml.Urls, loc{p})
+	}
+
+	enc := xml.NewEncoder(os.Stdout)
+	enc.Indent("", " ")
+	fmt.Print(xml.Header)
+	if err := enc.Encode(toXml); err != nil {
+		panic(err)
+	}
+	fmt.Println()
+}
+
+const xmlns = "http://www.sitemaps.org/schemas/sitemap/0.9"
+
+type loc struct {
+	Value string `xml:"loc"`
+}
+
+type urlSet struct {
+	Urls []loc `xml:"url"`
+	//xml namespace
+	Xmlns string `xml:"xmlns,attr"`
 }
 
 func bfs(urlStr string, maxDepth int) []string {
@@ -40,6 +65,9 @@ func bfs(urlStr string, maxDepth int) []string {
 	}
 	for i := 0; i <= maxDepth; i++ {
 		q, nq = nq, make(map[string]struct{})
+		if len(q) == 0 {
+			break
+		}
 		for url := range q {
 			//已经遍历过
 			if _, ok := seen[url]; ok {
@@ -47,7 +75,9 @@ func bfs(urlStr string, maxDepth int) []string {
 			}
 			seen[url] = struct{}{}
 			for _, link := range get(url) {
-				nq[link] = struct{}{}
+				if _, ok := seen[link]; !ok {
+					nq[link] = struct{}{}
+				}
 			}
 		}
 	}
