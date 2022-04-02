@@ -2,7 +2,6 @@ package link
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"strings"
 
@@ -27,8 +26,8 @@ func Parse(r io.Reader) ([]Link, error) {
 	for _, n := range nodes {
 		links = append(links, buildLink(n))
 	}
-	fmt.Println(links)
-	return nil, nil
+	// fmt.Println(links)
+	return links, nil
 }
 
 //解析标签树，存于切片

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"link"
 	"os"
 )
@@ -13,8 +14,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	_, err = link.Parse(f)
+	links, err := link.Parse(f)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(links)
 }
