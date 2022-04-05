@@ -72,3 +72,17 @@ func TestFilter(t *testing.T) {
 		}
 	}
 }
+
+func TestDeck(t *testing.T) {
+	cards := New(Deck(3))
+	if len(cards) != 13*4*3 {
+		t.Errorf("Expected %d cards. Received %d cards.", 13*4*3, len(cards))
+	}
+}
+
+func TestShuffle(t *testing.T) {
+	cards := New(Shuffle)
+	for _, c := range cards {
+		fmt.Println(c)
+	}
+}
