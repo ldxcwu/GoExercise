@@ -24,7 +24,7 @@
 ### **2. Usage of ```http.template``` package**
 > If you need more complex print formats, you generally need to seperate out the formatting code for safer modification.  
 
-{{.Time | printf ".2f" }} will take the first part as an arguement for the second part.
+```{{.Time | printf ".2f" }}``` will take the first part as an arguement for the second part.
 1. Define a source of template(string or file)
    ```go
    {{range .Stories}}
@@ -44,3 +44,5 @@
    data := Data{Stories: s, URL: url, Host: host, Time: time, xxx}
    err := tpl.Execute(io.Writer, data)
    ```
+---
+![image](images/home.jpg)
