@@ -48,13 +48,28 @@ func getTopStories(numStories int) (templateData, error) {
 	if err != nil {
 		return td, err
 	}
-	type ret struct {
-		idx  int
-		item hn.Item
-		err  error
+	//make sure that we got the correct number of stories.
+	var items []hn.Item
+	at := 0
+	for len(items) < numStories && at < len(ids) {
+		need := (numStories - len(items)) * 5 / 4
+		//TODO: make sure that at + need < bounds.
+		items = append(items, getStories(c, ids[at:at+need])...)
+		at += need
 	}
+	td.Stories = items[0:numStories]
+	return td, nil
+}
+
+type ret struct {
+	idx  int
+	item hn.Item
+	err  error
+}
+
+func getStories(c hn.Client, ids []int) []hn.Item {
 	retCh := make(chan ret)
-	for i := 0; i < numStories; i++ {
+	for i := 0; i < len(ids); i++ {
 		go func(i, id int) {
 			item, err := c.GetItem(id)
 			if err != nil {
@@ -65,12 +80,13 @@ func getTopStories(numStories int) (templateData, error) {
 		}(i, ids[i])
 	}
 	var res []ret
-	for i := 0; i < numStories; i++ {
+	for i := 0; i < len(ids); i++ {
 		res = append(res, <-retCh)
 	}
 	sort.Slice(res, func(i, j int) bool {
 		return res[i].idx <= res[j].idx
 	})
+	var items []hn.Item
 	for _, r := range res {
 		if r.err != nil {
 			continue
@@ -78,14 +94,11 @@ func getTopStories(numStories int) (templateData, error) {
 		item := r.item
 		if item.Type == "story" && item.URL != "" {
 			item.Host = url2Host(item.URL)
-			td.Stories = append(td.Stories, item)
-		}
-		if len(td.Stories) > numStories {
-			break
+			items = append(items, item)
 		}
 	}
 	close(retCh)
-	return td, nil
+	return items
 }
 
 func url2Host(URL string) string {
