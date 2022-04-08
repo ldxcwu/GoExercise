@@ -26,12 +26,13 @@ func main() {
 func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-
-		td, err := getTopStories(numStories)
+		var td templateData
+		stories, err := getCachedStories(numStories)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		td.Stories = stories
 		td.Time = time.Since(start).Seconds()
 		err = tpl.Execute(w, td)
 		if err != nil {
@@ -41,12 +42,31 @@ func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 	})
 }
 
-func getTopStories(numStories int) (templateData, error) {
+var (
+	cache           []hn.Item
+	cacheExpiration time.Time
+)
+
+func getCachedStories(numStories int) ([]hn.Item, error) {
+	if time.Since(cacheExpiration) < 0 {
+		return cache, nil
+	}
+	//take care of here, you can't do like this:
+	//cache, err := getTopStories(numStories)
+	stories, err := getTopStories(numStories)
+	if err != nil {
+		return nil, err
+	}
+	cache = stories
+	cacheExpiration = time.Now().Add(time.Second * 10)
+	return cache, nil
+}
+
+func getTopStories(numStories int) ([]hn.Item, error) {
 	var c hn.Client
-	var td templateData
 	ids, err := c.GetTopStories()
 	if err != nil {
-		return td, err
+		return nil, err
 	}
 	//make sure that we got the correct number of stories.
 	var items []hn.Item
@@ -57,8 +77,7 @@ func getTopStories(numStories int) (templateData, error) {
 		items = append(items, getStories(c, ids[at:at+need])...)
 		at += need
 	}
-	td.Stories = items[0:numStories]
-	return td, nil
+	return items[:numStories], nil
 }
 
 type ret struct {
