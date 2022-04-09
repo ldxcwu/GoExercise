@@ -1,7 +1,6 @@
 # **Quite Hack News**
 
 ---
-## **Gains**
 ### **1. ```http.HandleFunc``` advantages**
 1. Normal Usage
    ```go
@@ -42,7 +41,26 @@
 3. Render
    ```go
    data := Data{Stories: s, URL: url, Host: host, Time: time, xxx}
-   err := tpl.Execute(io.Writer, data)
+   err := tpl.Execute(io.Writer, data) 
    ```
+### **3. Eliminate competition**
+> When we added cache to the project. We have to think about how to eliminate competition when multiple goroutine check the cache at the same time. 
+
+> We can use the command ```go run -race main.go``` to see if there are competitions.   
+```go
+var (
+	cache           []hn.Item
+	cacheExpiration time.Time
+	mux             sync.Mutex
+)
+
+func getCachedStories(numStories int) ([]hn.Item, error) {
+	mux.Lock()
+	defer mux.Unlock()
+	if time.Since(cacheExpiration) < 0 {
+		return cache, nil
+	}
+   // ......
+```
 ---
 ![image](images/home.jpg)
