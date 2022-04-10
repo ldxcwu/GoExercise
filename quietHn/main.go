@@ -25,10 +25,31 @@ func main() {
 }
 
 func handler(numStories int, tpl *template.Template) http.HandlerFunc {
+	sc := storyCache{
+		numStories: numStories,
+		duration:   6 * time.Second,
+	}
+
+	go func() {
+		ticker := time.NewTicker(3 * time.Second)
+		for {
+			temp := storyCache{
+				numStories: numStories,
+				duration:   6 * time.Second,
+			}
+			temp.getCachedStories()
+			sc.cacheMux.Lock()
+			sc.cache = temp.cache
+			sc.cacheExpiration = temp.cacheExpiration
+			sc.cacheMux.Unlock()
+			<-ticker.C
+		}
+	}()
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		var td templateData
-		stories, err := getCachedStories(numStories)
+		stories, err := sc.getCachedStories()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -43,27 +64,29 @@ func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 	})
 }
 
-var (
+type storyCache struct {
 	cache           []hn.Item
 	cacheExpiration time.Time
+	duration        time.Duration
 	cacheMux        sync.Mutex
-)
+	numStories      int
+}
 
-func getCachedStories(numStories int) ([]hn.Item, error) {
-	cacheMux.Lock()
-	defer cacheMux.Unlock()
-	if time.Since(cacheExpiration) < 0 {
-		return cache, nil
+func (s *storyCache) getCachedStories() ([]hn.Item, error) {
+	s.cacheMux.Lock()
+	defer s.cacheMux.Unlock()
+	if time.Since(s.cacheExpiration) < 0 {
+		return s.cache, nil
 	}
 	//take care of here, you can't do like this:
 	//cache, err := getTopStories(numStories)
-	stories, err := getTopStories(numStories)
+	stories, err := getTopStories(s.numStories)
 	if err != nil {
 		return nil, err
 	}
-	cache = stories
-	cacheExpiration = time.Now().Add(time.Second * 15)
-	return cache, nil
+	s.cache = stories
+	s.cacheExpiration = time.Now().Add(s.duration)
+	return s.cache, nil
 }
 
 func getTopStories(numStories int) ([]hn.Item, error) {
