@@ -1,10 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"runtime/debug"
+
+	"github.com/alecthomas/chroma/quick"
 )
 
 func main() {
@@ -13,8 +18,32 @@ func main() {
 	mux.HandleFunc("/", hello)
 	mux.HandleFunc("/panic", panicDemo)
 	mux.HandleFunc("/panic-after", panicAfterDemo)
+	mux.HandleFunc("/debug", sourceCodeHandler)
 
-	http.ListenAndServe(":8080", recoverMiddleware(mux, true))
+	// http.ListenAndServe(":8080", recoverMiddleware(mux, true))
+	http.ListenAndServe(":8080", mux)
+}
+
+func sourceCodeHandler(w http.ResponseWriter, r *http.Request) {
+	// if path, ok := r.Form["path"]; ok {
+	// os.Open(path[0])
+	// }
+	path := r.FormValue("path")
+	file, err := os.Open(path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+	// io.Copy(w, file)
+	var bytes bytes.Buffer
+	bytes.ReadFrom(file)
+	io.Copy(&bytes, file)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_ = quick.Highlight(w, bytes.String(), "go", "html", "monokai")
 }
 
 func recoverMiddleware(app http.Handler, dev bool) http.HandlerFunc {
@@ -32,10 +61,10 @@ func recoverMiddleware(app http.Handler, dev bool) http.HandlerFunc {
 				fmt.Fprintf(w, "<h1>%v</h1><pre>%s</pre>", err, string(stack))
 			}
 		}()
-		rw := &responseWriter{ResponseWriter: w}
-		app.ServeHTTP(rw, r)
-		// app.ServeHTTP(w, r)
-		rw.flush()
+		// rw := &responseWriter{ResponseWriter: w}
+		// app.ServeHTTP(rw, r)
+		app.ServeHTTP(w, r)
+		// rw.flush()
 	}
 }
 

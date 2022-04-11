@@ -54,3 +54,34 @@ func hello(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "<h1>Hello!</h1>")
 }
 ```
+
+Then:   
+1. put codes file on browser to have a test.(with syntax highlighting)   
+2. exact filename from panic stack trace  
+3. put above source file on browser.
+   
+## 1. go get github.com/alecthomas/chroma to test view source code on browser.
+```go
+
+
+func sourceCodeHandler(w http.ResponseWriter, r *http.Request) {
+	// if path, ok := r.Form["path"]; ok {
+	// os.Open(path[0])
+	// }
+	path := r.FormValue("path")
+	file, err := os.Open(path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+	// io.Copy(w, file)
+	var bytes bytes.Buffer
+	bytes.ReadFrom(file)
+	io.Copy(&bytes, file)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_ = quick.Highlight(w, bytes.String(), "go", "html", "monokai")
+}
