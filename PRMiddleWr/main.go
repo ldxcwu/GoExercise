@@ -28,11 +28,49 @@ func recoverMiddleware(app http.Handler, dev bool) http.HandlerFunc {
 				log.Println(err)
 				stack := debug.Stack()
 				log.Println(string(stack))
+				w.WriteHeader(http.StatusInternalServerError)
 				fmt.Fprintf(w, "<h1>%v</h1><pre>%s</pre>", err, string(stack))
 			}
 		}()
-		app.ServeHTTP(w, r)
+		rw := &responseWriter{ResponseWriter: w}
+		app.ServeHTTP(rw, r)
+		// app.ServeHTTP(w, r)
+		rw.flush()
 	}
+}
+
+// type ResponseWriter interface {
+// 	Header() Header
+// 	Write([]byte) (int, error)
+// 	WriteHeader(statusCode int)
+// }
+
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+	writes [][]byte
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	rw.writes = append(rw.writes, b)
+	return len(b), nil
+}
+
+func (rw *responseWriter) WriteHeader(statusCode int) {
+	rw.status = statusCode
+}
+
+func (rw *responseWriter) flush() error {
+	if rw.status != 0 {
+		rw.ResponseWriter.WriteHeader(rw.status)
+	}
+	for _, write := range rw.writes {
+		_, err := rw.ResponseWriter.Write(write)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func panicDemo(w http.ResponseWriter, r *http.Request) {
