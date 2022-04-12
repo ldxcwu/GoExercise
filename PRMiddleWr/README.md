@@ -85,3 +85,38 @@ func sourceCodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = quick.Highlight(w, bytes.String(), "go", "html", "monokai")
 }
+```
+
+## 2. extract filename from stack traces   
+```go
+// 1. get stack
+stack := debug.Stack()
+// 2. make links
+// goroutine 19 [running]:
+// runtime/debug.Stack()
+// 	/usr/local/go/src/runtime/debug/stack.go:24 +0x88
+// main.recoverMiddleware.func1.1(0x1, {0x100a8bb48, 0x140001ae460})
+// 	/Users/lxw/Documents/FTC/GoExercise/PRMiddleWr/main.go:58 +0x74
+// panic({0x100a316a0, 0x100a846d8})
+func makeLinks(stack string) string {
+	lines := strings.Split(stack, "\n")
+	for l, line := range lines {
+		if len(line) == 0 || line[0] != '\t' {
+			continue
+		}
+		file := ""
+		for i, ch := range line {
+			if ch == ':' {
+				file = line[1:i]
+				break
+			}
+		}
+		lines[l] = "\t<a href=\"/debug?path=" + file + "\">" + file + "</a>" + line[len(file)+1:]
+	}
+	return strings.Join(lines, "\n")
+}
+//3. encode url path
+v := url.Values{}	
+v.Set("path", file)
+lines[l] = "\t<a href=\"/debug?" + v.Encode() + "\">" + file + "</a>" + line[len(file)+1:]
+```
