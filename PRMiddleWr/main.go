@@ -9,9 +9,12 @@ import (
 	"net/url"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"strings"
 
-	"github.com/alecthomas/chroma/quick"
+	"github.com/alecthomas/chroma/formatters/html"
+	"github.com/alecthomas/chroma/lexers"
+	"github.com/alecthomas/chroma/styles"
 )
 
 func main() {
@@ -64,9 +67,20 @@ func makeLinks(stack string) string {
 				break
 			}
 		}
+		var lineNum strings.Builder
+		for i := len(file) + 2; i < len(line); i++ {
+			if line[i] < '0' || line[i] > '9' {
+				break
+			}
+			lineNum.WriteByte(line[i])
+		}
 		v := url.Values{}
 		v.Set("path", file)
-		lines[l] = "\t<a href=\"/debug?" + v.Encode() + "\">" + file + "</a>" + line[len(file)+1:]
+		v.Set("line", lineNum.String())
+		lines[l] = "\t<a href=\"/debug?" + v.Encode() + "\">" +
+			file + ":" + lineNum.String() +
+			"</a>" +
+			line[len(file)+2+len(lineNum.String()):]
 		// lines[l] = "\t<a href=\"/debug?path=" + file + "\">" + file + "</a>" + line[len(file)+1:]
 	}
 	return strings.Join(lines, "\n")
@@ -77,6 +91,11 @@ func sourceCodeHandler(w http.ResponseWriter, r *http.Request) {
 	// os.Open(path[0])
 	// }
 	path := r.FormValue("path")
+	lineV := r.FormValue("line")
+	line, err := strconv.Atoi(lineV)
+	if err != nil {
+		line = -1
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -91,7 +110,25 @@ func sourceCodeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	_ = quick.Highlight(w, bytes.String(), "go", "html", "monokai")
+	// _ = quick.Highlight(w, bytes.String(), "go", "html", "monokai")
+
+	var lines [][2]int
+	if line >= 0 {
+		lines = append(lines, [2]int{line, line})
+	}
+
+	style := styles.Get("github")
+	if style == nil {
+		style = styles.Fallback
+	}
+	lexer := lexers.Get("go")
+	if lexer == nil {
+		lexer = lexers.Fallback
+	}
+	iterator, _ := lexer.Tokenise(nil, bytes.String())
+	format := html.New(html.WithLineNumbers(true), html.HighlightLines(lines))
+	w.Header().Set("Content-Type", "text/html")
+	format.Format(w, style, iterator)
 }
 
 func recoverMiddleware(app http.Handler, dev bool) http.HandlerFunc {
