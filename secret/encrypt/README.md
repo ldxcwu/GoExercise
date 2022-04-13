@@ -15,4 +15,5 @@ This package is build to provide aes encrypt and decrypt functions.
     ```
 2. Use aes to build an implentation of cipher.Block
 3. Build a cfb with the Block and other args.
-4. Encrypt and Decrypt.
+4. Encrypt and Decrypt.   
+---

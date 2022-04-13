@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"secret/cipher"
 	"secret/encrypt"
 	"strings"
 	"sync"
@@ -22,6 +23,41 @@ func NewVault(encodingKey, filepath string) *Vault {
 		encodingKey: encodingKey,
 		filepath:    filepath,
 	}
+}
+
+func (v *Vault) writeKV(w io.Writer) error {
+	return json.NewEncoder(w).Encode(v.kvMap)
+}
+
+func (v *Vault) readKV(r io.Reader) error {
+	return json.NewDecoder(r).Decode(&v.kvMap)
+}
+
+func (v *Vault) store() error {
+	f, err := os.OpenFile(v.filepath, os.O_RDWR|os.O_CREATE, 0755)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w, err := cipher.EncryptStreamWriter(v.encodingKey, f)
+	if err != nil {
+		return err
+	}
+	return v.writeKV(w)
+}
+
+func (v *Vault) load() error {
+	f, err := os.Open(v.filepath)
+	if err != nil {
+		v.kvMap = make(map[string]string)
+		return nil
+	}
+	defer f.Close()
+	r, err := cipher.DecryptStreamReader(v.encodingKey, f)
+	if err != nil {
+		return err
+	}
+	return v.readKV(r)
 }
 
 func (v *Vault) loadKVMap() error {
@@ -52,7 +88,7 @@ func (v *Vault) loadKVMap() error {
 	return nil
 }
 
-func (v *Vault) saveKVMap() error {
+func (v *Vault) storeKVMap() error {
 	var sb strings.Builder
 	err := json.NewEncoder(&sb).Encode(v.kvMap)
 	if err != nil {
@@ -78,23 +114,23 @@ func (v *Vault) saveKVMap() error {
 func (v *Vault) Set(key, value string) error {
 	v.mux.Lock()
 	defer v.mux.Unlock()
-	encryptedVal, err := encrypt.Encrypt(v.encodingKey, value)
+	encryptedVal, err := cipher.Encrypt(v.encodingKey, value)
 	if err != nil {
 		panic(err)
 	}
-	err = v.loadKVMap()
+	err = v.load()
 	if err != nil {
 		return err
 	}
 	v.kvMap[key] = encryptedVal
-	err = v.saveKVMap()
+	err = v.store()
 	return err
 }
 
 func (v *Vault) Get(key string) (string, error) {
 	v.mux.Lock()
 	defer v.mux.Unlock()
-	err := v.loadKVMap()
+	err := v.load()
 	if err != nil {
 		return "", err
 	}
@@ -102,7 +138,7 @@ func (v *Vault) Get(key string) (string, error) {
 	if !ok {
 		return "", errors.New("no such value for that key")
 	}
-	plaintext, err := encrypt.Decrypt(v.encodingKey, encryptedVal)
+	plaintext, err := cipher.Decrypt(v.encodingKey, encryptedVal)
 	if err != nil {
 		return "", err
 	}
@@ -112,7 +148,7 @@ func (v *Vault) Get(key string) (string, error) {
 func (v *Vault) Del(key string) error {
 	v.mux.Lock()
 	defer v.mux.Unlock()
-	err := v.loadKVMap()
+	err := v.load()
 	if err != nil {
 		return err
 	}
@@ -121,5 +157,5 @@ func (v *Vault) Del(key string) error {
 		return nil
 	}
 	delete(v.kvMap, key)
-	return v.saveKVMap()
+	return v.store()
 }
