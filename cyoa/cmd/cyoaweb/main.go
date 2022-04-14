@@ -10,7 +10,7 @@ import (
 
 func main() {
 	port := flag.Int("port", 8080, "the port to start the web app")
-	filename := flag.String("file", "../../gopher.json", "the JSON file with the CYOA story")
+	filename := flag.String("file", "gopher.json", "the JSON file with the CYOA story")
 	flag.Parse()
 
 	f, err := os.Open(*filename)
