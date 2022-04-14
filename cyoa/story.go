@@ -12,9 +12,10 @@ import (
 var tpl *template.Template
 
 func init() {
+	// fmt.Println(os.Getwd())
 	var err error
 	//按照预先定义的模版去显示内容，
-	tpl, err = template.ParseFiles("story.tmpl")
+	tpl, err = template.ParseFiles("../../story.tmpl")
 	if err != nil {
 		panic(err)
 	}
