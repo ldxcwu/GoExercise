@@ -145,6 +145,20 @@ func (v *Vault) Get(key string) (string, error) {
 	return plaintext, nil
 }
 
+func (v *Vault) List() ([]string, error) {
+	v.mux.Lock()
+	defer v.mux.Unlock()
+	err := v.load()
+	if err != nil {
+		return nil, err
+	}
+	var ret []string
+	for k, _ := range v.kvMap {
+		ret = append(ret, k)
+	}
+	return ret, nil
+}
+
 func (v *Vault) Del(key string) error {
 	v.mux.Lock()
 	defer v.mux.Unlock()
