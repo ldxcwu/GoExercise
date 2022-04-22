@@ -87,7 +87,9 @@ func sourceCodeHandler(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-## 2. extract filename from stack traces   
+## 2. extract filename from stack traces  
+the stack traces's msg is the specifile pattern,
+and we can extract filename from it easily.
 ```go
 // 1. get stack
 stack := debug.Stack()
