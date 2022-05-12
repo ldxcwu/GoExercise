@@ -16,7 +16,7 @@ func main() {
 	//所以这里引用这个包，内部做了一下判断
 	home, _ := homedir.Dir()
 	// fmt.Printf("homeDir: %v\n", home)
-	dbPath := filepath.Join(home, "tasks.db")
+	dbPath := filepath.Join(home, ".tasks.db")
 	must(db.Init(dbPath))
 	must(cmd.RootCmd.Execute())
 
