@@ -17,3 +17,5 @@ Task CLI use cobra to build cli and use bolt to store tasks info.
 5. bolt provides ```db.View(func())``` to start a read-only transaction.
 6. go install command will put executable file after build in $GOPATH/bin
 7. export $GOPATH/bin to make our tool run anywhere.
+
+> Fonts for Powerline
