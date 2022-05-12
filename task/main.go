@@ -19,7 +19,6 @@ func main() {
 	dbPath := filepath.Join(home, ".tasks.db")
 	must(db.Init(dbPath))
 	must(cmd.RootCmd.Execute())
-
 }
 
 func must(err error) {
